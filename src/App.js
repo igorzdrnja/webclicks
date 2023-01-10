@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import * as d3 from 'd3';
+import * as sk from 'd3-sankey';
 import $ from 'jquery';
 import './App.css';
 import CsvParse from '@vtex/react-csv-parse';
@@ -102,24 +103,24 @@ constructor(props) {
     //the following portable approach is unfortunately very time and memory consuming
     // axios.get('https://cors-anywhere.herokuapp.com/http://d1c723f3ouvz7y.cloudfront.net/US_btg.xlsx', { responseType: 'arraybuffer' })
     //      .then((response) => {
-    //          var data = new Uint8Array(response.data);
-    //          var workbook = XLSX.read(data, {type:"array"});
-    //          var cat = workbook;
+    //          let data = new Uint8Array(response.data);
+    //          let workbook = XLSX.read(data, {type:"array"});
+    //          let cat = workbook;
     //      });
 }
 
 getValidationState = () => {
-    var me = this;
+    let me = this;
     if (me.state.urlEndPointValue.trim().length) {
-        var parsedUrls = me.state.urlEndPointValue.split(/[\s\n,]+/);
-        parsedUrls.forEach(function(url, idx){
+        let parsedUrls = me.state.urlEndPointValue.split(/[\s\n,]+/);
+        parsedUrls.forEach(function(url){
             if (url.length) {
                 if (url.trim().length < 5) {
                     me.state.errors = [{value: 'URL is too short!'}];
                     return;
                 }
                 try {
-                    let endpoint = new URL(url);
+                    new URL(url);
                 }
                 catch (e) {
                     me.state.errors.push({value: e.message});
@@ -160,10 +161,10 @@ handleData = data => {
         csvlinkvisibility: 'hidden'
     });
 
-    var me = this;
+    let me = this;
 
-    var result = [];
-    var keywords = [];
+    let result = [];
+    let keywords = [];
     let nodes = [];
     let links = [];
     let interactions = [];
@@ -208,7 +209,7 @@ handleData = data => {
         }
 
         //search queries breakdown
-        var parsedUrl = new URL(value.link);
+        let parsedUrl = new URL(value.link);
         for (let ident of searchIdentifiers[me.website]) {
             let foundIdent = parsedUrl.searchParams.get(ident);
             if (foundIdent) {
@@ -220,8 +221,8 @@ handleData = data => {
                 else search_parameters_breakdown_grouped.params[foundIdent]++;
 
                 //now add each keyword separately, to another dataset
-                if (typeof(keywords[value.id]) == 'undefined') keywords[value.id] = [];
-                var words = foundIdent.split(' ');
+                if (typeof(keywords[value.id]) === 'undefined') keywords[value.id] = [];
+                let words = foundIdent.split(' ');
                 for (let word of words) {
                        if (!keywords[value.id].includes(word)) {
                            keywords[value.id].push(word);
@@ -265,20 +266,21 @@ handleData = data => {
         }
     };
 
-    //format result as clicks per user, and get all the interaction steps
+    // Format result as clicks per user, and get all the interaction steps
     data.forEach((value) => {
-        //did we find/identified the type of page?
-        var found = false;
+        // Did we find/identify the type of page?
+        let found = false;
         for (const [key, val] of Object.entries(page_identifiers)) {
-                for (let ident of page_identifiers[key]) {
-                    let reg = new RegExp(val);
-                    if (reg.test(value.link)) {
-                        add_interaction_and_result(value, key, result, interactions);
-                        found = true;
-                        break;
-                    }
+            // eslint-disable-next-line
+            Object.entries(page_identifiers[key]).every(() => {
+                let reg = new RegExp(val);
+                if (reg.test(value.link)) {
+                    add_interaction_and_result(value, key, result, interactions);
+                    found = true;
+                    return false;
                 }
-            if (found) break;
+                return true;
+            })
         }
         if (!found)  {
             add_interaction_and_result(value, 'Other', result, interactions);
@@ -286,7 +288,7 @@ handleData = data => {
     });
 
     let keywords_breakdown_combo = [];
-    var keywords_counter = 1;
+    let keywords_counter = 1;
     for (let word in search_parameters_breakdown.params){
         let val = "'" + word + "': " + search_parameters_breakdown.params[word] + " Users";
         keywords_breakdown_combo.push({
@@ -295,7 +297,7 @@ handleData = data => {
         if (typeof (me.state.csvData[keywords_counter]) === 'undefined') me.state.csvData[keywords_counter] = [];
         me.state.csvData[keywords_counter][0] = val;
         keywords_counter++;
-    };
+    }
 
     let keywords_grouped_breakdown_combo = [];
     keywords_counter = 1;
@@ -307,10 +309,10 @@ handleData = data => {
         if (typeof (me.state.csvData[keywords_counter]) === 'undefined') me.state.csvData[keywords_counter] = [];
         me.state.csvData[keywords_counter][1] = val;
         keywords_counter++;
-    };
+    }
 
     let filters_grouped_breakdown_combo = [];
-    var filters_counter = 1;
+    let filters_counter = 1;
     for (let param in filter_parameters_breakdown.params) {
         let val = param + " - " + filter_parameters_breakdown.params[param] + " Users";
             filters_grouped_breakdown_combo.push({
@@ -319,10 +321,10 @@ handleData = data => {
         if (typeof (me.state.csvData[filters_counter]) === 'undefined') me.state.csvData[filters_counter] = [];
         me.state.csvData[filters_counter][2] = val;
         filters_counter++;
-    };
+    }
 
     let category_parameters_breakdown_combo = [];
-    var categories_counter = 1;
+    let categories_counter = 1;
     for (let param in category_parameters_breakdown.params) {
         let val = param + " - " + category_parameters_breakdown.params[param] + " Users";
         if (typeof (me.state.amazonCategories[param]) !== 'undefined') {
@@ -334,21 +336,23 @@ handleData = data => {
         if (typeof (me.state.csvData[categories_counter]) === 'undefined') me.state.csvData[categories_counter] = [];
         me.state.csvData[categories_counter][3] = val;
         categories_counter++;
-    };
+    }
 
+    let parsedUrls;
     if (this.state.urlEndPointValue) {
-        var parsedUrls = me.state.urlEndPointValue.split(/[\s\n,]+/);
+        parsedUrls = me.state.urlEndPointValue.split(/[\s\n,]+/);
     } else {
-        var parsedUrls = [];
+        parsedUrls = [];
     }
 
     for (let res in result) {
         //check if the user reached the desired product page
         let success = false;
 
-        for (var idx=0; idx < result[res].length; idx++) {
+        for (let idx=0; idx < result[res].length; idx++) {
             if (this.state.urlEndPointValue) {
-                parsedUrls.forEach(function(url, idx){
+                // eslint-disable-next-line
+                parsedUrls.forEach((url, idx) => {
                     if (url.length) {
                         let urlProcessed = new URL(url);
                         if (result[res][idx].url.substring(0, urlProcessed.href.length) === urlProcessed.href) {
@@ -372,6 +376,7 @@ handleData = data => {
         }
         if (typeof(result[res]) !== 'undefined') {
             average_clicks += result[res].length;
+            // eslint-disable-next-line
             average_time += parseInt(result[res][result[res].length - 1].time);
             if (max_clicks < result[res].length) max_clicks = result[res].length;
         }
@@ -381,8 +386,8 @@ handleData = data => {
     average_time = (average_time / Object.keys(result).length);
 
     //create graph nodes/bars and define all the links / transitions between page types
-    for (var i=1; i <= max_clicks; i++) {
-        for (var j=0; j < pageTypes.length; ++j) {
+    for (let i=1; i <= max_clicks; i++) {
+        for (let j=0; j < pageTypes.length; ++j) {
             //this.state.csvData[0].push('Step ' + i);
             nodes.push({
                 "name": pageTypes[j].name,
@@ -394,14 +399,14 @@ handleData = data => {
                 "leaving": 0,
                 "transitionsText": ''
             });
-            for (var k=0; k < pageTypes.length; k++) {
+            for (let k=0; k < pageTypes.length; k++) {
                 if (1 < i && i < max_clicks + 1) { //no need to add links if it's the last step, or if we haven't passed the initial step yet
                     links.push({
                         "source": nodes.length - pageTypes.length - 1,
                         "target": nodes.length  - 1 - j + k,
                         "value": 0
                     });
-                    for (var r in result) {
+                    for (let r in result) {
                         if (result.hasOwnProperty(r)) {
                             if (1 < i && i < result[r].length + 1) {
                                 //check if previous and current page type that user clicked on, match our new links object
@@ -505,7 +510,7 @@ handleData = data => {
 
     let div = new ReactFauxDOM.createElement('div');
 
-    var svg = d3.select(div).append("svg")
+    let svg = d3.select(div).append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", (height + margin.top + margin.bottom) * 2)
         .append("g") //group everything on the canvas together.
@@ -540,7 +545,6 @@ handleData = data => {
 
     let formatNumber = d3.format(".0f");    // zero decimal places
     let format = function(d) { return formatNumber(d) + " " + units; };
-    let colors = d3.schemeCategory20b;
 
     let axisScale = d3.scaleLinear()
         .domain([this.state.total_users,0])
@@ -557,12 +561,12 @@ handleData = data => {
         .range(["green","orange","red"]);
 
     // Set the sankey diagram properties
-    let sankey = d3.sankey() //calling the function
+    let sankey = sk.sankey() //calling the function
         .nodeWidth(width / max_clicks / 3.5)
         .nodePadding(0)
         .size([width, height]);
 
-    var path = sankey.link();
+    let path = sankey.link();
 
     const nodes_distance = Math.ceil((width - sankey.nodeWidth())/ (max_clicks - 1));
 
@@ -620,16 +624,18 @@ handleData = data => {
     //covering the case in which user made only one click and left
     //(we need to add them to the nodes in the first step because there is no proper sankey link for that case
     //and nodes are generated based on the sankey links)
-    for (var i=0; i < pageTypes.length; i++) {
-        this.state.clusters_interactions.nodes[i].goneAfterFirstStep = 0;
-        for (var r in result) {
+    let state = Object.assign({}, this.state);
+    for (let i=0; i < pageTypes.length; i++) {
+        state.clusters_interactions.nodes[i].goneAfterFirstStep = 0;
+        for (let r in result) {
             if (result.hasOwnProperty(r) && result[r].length === 1) {
-                if (this.state.clusters_interactions.nodes[i].name === result[r][0].page){
-                    this.state.clusters_interactions.nodes[i].goneAfterFirstStep++;
+                if (state.clusters_interactions.nodes[i].name === result[r][0].page){
+                    state.clusters_interactions.nodes[i].goneAfterFirstStep++;
                 }
             }
         }
     }
+    this.setState(state);
 
     // load the data
     sankey.nodes(this.state.clusters_interactions.nodes)
@@ -691,7 +697,7 @@ handleData = data => {
 
     node.append("text")
         .attr("class", "innerText")
-        .attr("style", function(d){
+        .attr("style", function(){
             return "font-size: " + Math.floor(750 / max_clicks) + "%;"
         })
         .attr("id", function(d){
@@ -700,30 +706,30 @@ handleData = data => {
         .attr("x", function(d) {
             return d.x;
         })
-        .attr("transform", function(d, i) {
+        .attr("transform", function(d) {
             return "translate(-" + d.x + ",-" + (d.y + 35) + ") scale(1,-1)";
         });
 
     $("#clustable").html("Mouse over a node to see cluster information");
 
     function nodeonclick(d){
-        var yOffset = 0;
-        var currTrans = null;
+        let yOffset = 0;
+        let currTrans = null;
         if (!d.toggledOn) {
             if (!d.transitionsText){
                 //adding the transitions text for the node
-                var el = d3.select("#transitions" + d.node);
+                let el = d3.select("#transitions" + d.node);
                 d.sourceLinks.forEach(function (link) {
-                    var src = link.source.name.replace(' page','');
-                    var trg = link.target.name.replace(' page','');
+                    let src = link.source.name.replace(' page','');
+                    let trg = link.target.name.replace(' page','');
                     d.transitionsText += src + " --> " +
                         trg + " " + link.value + "\n";
                 });
 
-                var words = d.transitionsText.split('\n');
+                let words = d.transitionsText.split('\n');
 
-                for (var i = 0; i < words.length; i++) {
-                    var tspan = el.append('tspan').text(words[i]);
+                for (let i = 0; i < words.length; i++) {
+                    let tspan = el.append('tspan').text(words[i]);
                     if (i > 0)
                         tspan.attr('x', el.attr('x')).attr('dy', '15');
                 }
@@ -772,10 +778,9 @@ handleData = data => {
             .attr("fill-opacity",.7);
 
         let desc;
-        for(var i=0;i<pageTypes.length;i++){
+        for(let i=0;i<pageTypes.length;i++){
             if(pageTypes[i].name===d.name){
                 desc=pageTypes[i].desc || '';
-                //var descGlobal = pageTypes[i].desc || '';
             }
         }
         svg.selectAll(".link")
@@ -811,10 +816,10 @@ handleData = data => {
         $("#instructions").html("");
     }
 
-    function linkmouseover(d){
+    function linkmouseover(){
         this.component.style.strokeOpacity = 0.5;
     }
-    function linkmouseout(d){
+    function linkmouseout(){
         this.component.style.strokeOpacity = 0.05;
     }
 
@@ -914,7 +919,7 @@ render(){
                 </form>
                 <Row>
                     <Col xs={4} md={4} align="center">
-                        <p id="resultGlobal" style={{"marginBottom":"20px","marginTop":"15px"}}></p>
+                        <p id="resultGlobal" style={{"marginBottom":"20px","marginTop":"15px"}} />
                     </Col>
                     <Col xs={4} md={4} align="center">
                         { this.state.keywordsCombo }
@@ -926,7 +931,7 @@ render(){
                     </Col>
                 </Row>
                 <div className="span12" align="center">
-                    <p id="clustable" style={{"marginBottom":"20px","marginTop":"15px","marginLeft":"0px"}}></p>
+                    <p id="clustable" style={{"marginBottom":"20px","marginTop":"15px","marginLeft":"0px"}} />
                 </div>
                 <div className="span12" align="center">
                     <div id="App">
@@ -938,8 +943,8 @@ render(){
                     {/*<p id="onclick" style={{"marginBottom":"-10px","marginTop":"20px","marginLeft":"0px"}}></p>*/}
                 </div>
                 <div className="span12" align="center">
-                    <p id="clusdesc" className="span3 offset5" style={{"marginBottom":"300px","marginTop":"15px"}}></p>
-                    <p id="instructions" className="span3 offset8" style={{"marginBottom":"300px","marginTop":"45px"}}></p>
+                    <p id="clusdesc" className="span3 offset5" style={{"marginBottom":"300px","marginTop":"15px"}}/>
+                    <p id="instructions" className="span3 offset8" style={{"marginBottom":"300px","marginTop":"45px"}}/>
                 </div>
             </div>
         );
